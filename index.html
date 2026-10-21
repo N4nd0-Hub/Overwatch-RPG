@@ -457,6 +457,12 @@ body{
 .portrait-tools .portrait-sliders{margin-top:8px}
 @keyframes portraitToolsIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
 
+
+/* Biblioteca de agentes: acesso direto na barra de navegação */
+.top-actions a.btn[href="agentes.html"]{display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--orange) 18%,transparent);border:1px solid var(--orange);color:#fff;text-decoration:none;white-space:nowrap;font-weight:900}
+.top-actions a.btn[href="agentes.html"]:hover{background:var(--orange);color:#172a39}
+.top-actions .mobile-label{display:none}
+@media(max-width:760px){.top-actions .mobile-label{display:inline}.top-actions a.btn[href="agentes.html"]{padding:8px 11px}}
 </style>
 </head>
 <body>
@@ -471,6 +477,7 @@ body{
   <div class="top-actions">
     <button class="btn" id="themeBtn" title="Personalizar as cores deste agente"><span class="ui-icon icon-theme" aria-hidden="true"></span><span class="desktop-label">Tema</span></button>
     <button class="btn" id="mechanicsBtn" title="Alterar fórmulas, substituições de atributo e recursos especiais deste agente">⚙️ <span class="desktop-label">Mecânicas</span></button>
+    <a class="btn" href="agentes.html" title="Biblioteca de agentes prontos" aria-label="Abrir biblioteca de agentes"><span class="desktop-label">Agentes prontos</span><span class="mobile-label">Agentes</span></a>
     <button class="btn" id="newHeroBtn">+ <span class="desktop-label">Novo Agente</span></button>
     <button class="btn" id="exportBtn">Exportar</button>
     <button class="btn" id="importBtn">Importar</button>
