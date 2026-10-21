@@ -749,7 +749,7 @@ function defaultState(){const h=defaultHero();return {version:1,currentId:h.id,h
 let state=load();
 const FIKA_NEW_PORTRAIT='https://n4nd0-hub.github.io/Overwatch-RPG/assets/jetpack-cat-fika.webp';
 function migrateFikaPortrait(h){
-  if(!h || !(h._templateId==='jetpack-cat-overwatch-rpg-2026-v1'||/^(jetpack\\s*cat|fika)$/i.test(String(h.name||'').trim())))return;
+  if(!h || !(h._templateId==='jetpack-cat-overwatch-rpg-2026-v1'||/^(jetpack\s*cat|fika)$/i.test(String(h.name||'').trim())))return;
   const prior=String(h.image||'');
   if(!prior || prior.includes('Jetpack_Cat_full_portrait.png')){
     h.image=FIKA_NEW_PORTRAIT;
