@@ -14,6 +14,7 @@ Ficha de agentes para o sistema próprio de Overwatch RPG.
 - **Emre** — DPS, assalto cibernético.
 - **Jetpack Cat (Fika)** — Suporte, voo e resgate.
 - **Hanzo** — DPS, arco e reconhecimento.
+- **Mizuki** — Suporte, 25 pontos de atributos (20 + 5), 8 PTec e 15 PH disponíveis; retrato enviado pelo jogador.
 
 Os modelos estão **integrados no próprio `agentes.html`**, sem depender de uma página HTML por personagem. Os antigos arquivos `emre.html`, `jetpack-cat.html` e `hanzo.html` foram consolidados e removidos.
 
