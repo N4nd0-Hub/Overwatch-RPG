@@ -92,6 +92,25 @@ dialog::backdrop{background:#102333bf;backdrop-filter:blur(5px)}
 .toast.show{opacity:1;transform:none}
 @media(max-width:1120px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.top{padding:11px 14px}.brand strong{font-size:14px}.brand small{font-size:8px}.back{font-size:10px;padding:9px}main{padding:22px 13px 40px}.banner{grid-template-columns:1fr}.stats{justify-content:flex-start}.cards{grid-template-columns:1fr}.card-art{height:230px}.card p{min-height:0}.tools{flex-direction:column;align-items:stretch}.search{flex-basis:auto}.filters{justify-content:center}.bottom{align-items:stretch}#addAll{width:100%;max-width:none}.detail-grid{grid-template-columns:1fr}.detail-section.wide{grid-column:auto}}
+/* Touch controls and agent details on narrow screens. */
+html{-webkit-text-size-adjust:100%}
+button,a,input{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+@media(max-width:720px){
+  .top{flex-wrap:wrap;padding-top:max(11px,env(safe-area-inset-top));gap:12px}
+  .back{min-height:44px;display:flex;align-items:center;justify-content:center}
+  main{padding-left:max(13px,env(safe-area-inset-left));padding-right:max(13px,env(safe-area-inset-right))}
+  .search input{font-size:16px;min-height:46px}
+  .filter,.primary,.secondary,.close{min-height:44px;font-size:12px}
+  .filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.filter{padding:10px 4px}
+  .controls{grid-template-columns:minmax(0,1fr) auto}
+  .card p,.bottom p,.detail-section p{font-size:13px;line-height:1.6}
+  dialog{width:calc(100% - 16px);max-width:none;max-height:calc(100dvh - 16px);margin:auto}
+  .detail-head{position:sticky;top:0;z-index:1;padding:13px;align-items:flex-start}
+  .detail-head>div{min-width:0}.detail-head h2{font-size:22px;overflow-wrap:anywhere}.close{flex-shrink:0}
+  .detail-body{padding:13px}.detail-foot{padding:13px;flex-wrap:wrap}
+  .detail-foot button{flex:1 1 180px;min-width:0}
+  .toast{left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));max-width:none}
+}
 </style>
 </head>
 <body>
