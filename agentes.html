@@ -198,7 +198,7 @@ function upgradeMizukiSaved(saved,template){
  if(!saved||template.name!=="MIZUKI")return false;
  let changed=false;
  const clone=x=>JSON.parse(JSON.stringify(x));
- const isPlaceholder=a=>/^(Ataque Básico [12]|Habilidade [123]|Ultimate|Passiva do Mizuki)$/i.test(String(a?.name||"").trim())||/A definir: personalize|Espaço reservado|Ataque em aberto da ficha original/.test(String(a?.description||""));
+ const isPlaceholder=a=>{const n=String(a?.name||"").trim(),d=String(a?.description||"");return /A definir: personalize|Espaço reservado|Ataque em aberto da ficha original/.test(d)||(/^(Ataque Básico [12]|Habilidade [123]|Ultimate|Passiva do Mizuki)$/i.test(n)&&!d.trim())};
  const merge=(prop)=>{
    const old=Array.isArray(saved[prop])?saved[prop]:[];
    const custom=old.filter(x=>!isPlaceholder(x));
