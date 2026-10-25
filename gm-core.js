@@ -14,17 +14,20 @@ function scale(grade='Soldado',tier=0){
  const base={Lacaio:[1,2,2,2,0],Soldado:[2,3,3,2,1],Elite:[5,5,5,4,3],Chefe:[10,8,6,4,5]}[grade]||[2,3,3,2,1],t=clamp(tier,0,10);
  return Object.fromEntries(ATTRS.map(([k],i)=>[k,base[i]+t*(i===0?(grade==='Chefe'?3:2):i===1?2:1)]));
 }
-function ability(name,kind='skill',fields={}){return {id:uid(),kind,name,output:'Dano',action:kind==='passive'?'Passiva':'Ação Padrão',range:'Médio',target:'1 alvo',cost:kind==='ultimate'?10:kind==='skill'?2:0,mode:kind==='passive'?'none':'auto',amount:0,bonus:0,effect:'',...fields}}
+function ability(name,kind='skill',fields={}){return {id:uid(),kind,name,output:'Dano',action:kind==='passive'?'Passiva':'Ação Padrão',range:'Médio',target:'1 alvo',cost:kind==='ultimate'?10:kind==='skill'?2:0,mode:kind==='passive'?'none':'auto',amount:0,bonus:0,effect:'',attackBonus:0,rollMode:kind==='passive'?'description':fields.output==='Controle'?'save':'attack',attacksPerAction:1,saveType:'',saveDt:null,cooldownRounds:0,usage:'',...fields}}
 function makeEnemy(fields={}){
  const grade=GRADES.includes(fields.grade)?fields.grade:'Soldado';
- return {id:uid(),name:'Novo inimigo',faction:'Independente',grade,role:'DPS',tier:0,folderId:'',portrait:'',summary:'',notes:'',archived:false,
+ return {id:uid(),name:'Novo inimigo',faction:'Independente',grade,role:'DPS',tier:0,folderId:'',portrait:'',portraitFit:'cover',summary:'',notes:'',archived:false,overrides:{hp:null,movement:null},
   stats:scale(grade,fields.tier||0),adjust:{hp:0,damage:0,reduction:0,movement:0,energy:0,attack:0,defense:0},
   abilities:[ability('Ataque Básico','basic')],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),...fields};
 }
 function stats(enemy){
  const a=enemy.stats,m=enemy.adjust||{},base=enemy.role==='Tanque'?150:enemy.role==='Suporte'?100:50;
- return {hp:Math.max(1,Math.round(base+num(a.life)*50+num(m.hp))),damage:Math.max(0,round(num(a.power)*5+num(m.damage))),reduction:Math.max(0,round(num(a.resistance)*2+num(m.reduction))),movement:Math.max(0,round(10+num(a.dexterity)*2.5+num(m.movement))),energy:Math.max(0,round(10+num(m.energy))),attack:round(num(a.precision)+num(m.attack)),defense:round(num(a.dexterity)+num(m.defense)),dt:round(10+num(a.power))};
+ const result={hp:Math.max(1,Math.round(base+num(a.life)*50+num(m.hp))),damage:Math.max(0,round(num(a.power)*5+num(m.damage))),reduction:Math.max(0,round(num(a.resistance)*2+num(m.reduction))),movement:Math.max(0,round(10+num(a.dexterity)*2.5+num(m.movement))),energy:Math.max(0,round(10+num(m.energy))),attack:round(num(a.precision)+num(m.attack)),defense:round(num(a.dexterity)+num(m.defense)),dt:round(10+num(a.power))};
+ for(const key of ['hp','movement']){const value=enemy.overrides?.[key];if(value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value)))result[key]=Math.max(key==='hp'?1:0,round(value))}
+ return result;
 }
+function attackValue(enemy,a){return round(stats(enemy).attack+num(a.attackBonus))}
 function abilityValue(enemy,a){
  if(a.mode==='none'||a.kind==='passive')return null;
  if(a.mode==='fixed')return Math.max(0,round(a.amount));
@@ -41,12 +44,17 @@ function normalize(raw){
  const original=raw.stats||raw.attrs||{};
  e.stats=Object.fromEntries(ATTRS.map(([k])=>[k,clamp(original[k]??e.stats[k],0,999)]));
  e.adjust=Object.fromEntries(Object.keys(e.adjust).map(k=>[k,clamp(raw.adjust?.[k]??0,-99999,99999)]));
+ e.overrides=Object.fromEntries(['hp','movement'].map(k=>[k,raw.overrides?.[k]===null||raw.overrides?.[k]===undefined||raw.overrides?.[k]===''?null:clamp(raw.overrides[k],k==='hp'?1:0,999999)]));
+ e.portraitFit=raw.portraitFit==='contain'?'contain':'cover';
  if(Array.isArray(raw.abilities))e.abilities=raw.abilities.slice(0,80).map(a=>{
   if(!a||typeof a!=='object')throw Error('Habilidade inválida.');
   const v=ability(clean(a.name,160),['basic','skill','passive','ultimate'].includes(a.kind)?a.kind:'skill');
-  for(const k of ['id','name','output','action','range','target','mode','effect'])if(a[k]!==undefined)v[k]=clean(a[k],k==='effect'?30000:300);
+  for(const k of ['id','name','output','action','range','target','mode','effect','saveType','usage'])if(a[k]!==undefined)v[k]=clean(a[k],k==='effect'?30000:300);
   if(!['auto','fixed','none'].includes(v.mode))v.mode='none';
   for(const k of ['amount','bonus','cost'])v[k]=clamp(a[k]??0,k==='bonus'?-99999:0,99999);
+  v.attackBonus=clamp(a.attackBonus??0,-999,999);v.rollMode=['attack','save','automatic','description'].includes(a.rollMode)?a.rollMode:(v.kind==='passive'?'description':v.output==='Controle'?'save':'attack');
+  const count=String(a.attacksPerAction??1).trim();v.attacksPerAction=/^(?:X|(?:[1-9]|10)d(?:[1-9]\d?|100))$/i.test(count)?(count.toUpperCase()==='X'?'X':count.toLowerCase()):Math.max(1,Math.round(clamp(count,1,99)));
+  v.saveDt=a.saveDt===null||a.saveDt===undefined||a.saveDt===''?null:clamp(a.saveDt,0,9999);v.cooldownRounds=Math.round(clamp(a.cooldownRounds??0,0,100));
   return v;
  });
  return e;
@@ -134,7 +142,7 @@ const TEMPLATES=[
   ability('Aniquilação de área','ultimate',{cost:10,range:'Raio de 12m',target:'Todos na área',bonus:30,effect:'A área é anunciada uma rodada antes. Destreza contra DT 10 + Poder + 10 reduz o dano à metade.'}),
   ability('Fase II — Núcleo exposto','passive',{effect:'Ao chegar a 50% do HP Máximo, remove seu próprio escudo e recebe +3 Energia. Sua Redução de Dano diminui em 4; os ataques recebem +20 de dano até o fim do combate.'})]}
 ];
-function fromTemplate(key,tier=0){const t=TEMPLATES.find(x=>x.key===key);if(!t)throw Error('Modelo não encontrado.');return makeEnemy({...clone(t),id:uid(),templateKey:key,tier,stats:scale(t.grade,tier),abilities:t.abilities.map(a=>({...clone(a),id:uid()}))})}
-const api={FACTIONS,GRADES,ROLES,CONDITIONS,ATTRS,TEMPLATES,uid,clone,num,clamp,round,scale,ability,makeEnemy,stats,abilityValue,normalize,fromHero,spawn,newState,normalizeState,fromTemplate};
+function fromTemplate(key,tier=0){const t=TEMPLATES.find(x=>x.key===key);if(!t)throw Error('Modelo não encontrado.');return makeEnemy({...clone(t),id:uid(),templateKey:key,tier,stats:t.stats?clone(t.stats):scale(t.grade,tier),abilities:t.abilities.map(a=>({...clone(a),id:uid()}))})}
+const api={FACTIONS,GRADES,ROLES,CONDITIONS,ATTRS,TEMPLATES,uid,clone,num,clamp,round,scale,ability,makeEnemy,stats,attackValue,abilityValue,normalize,fromHero,spawn,newState,normalizeState,fromTemplate};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.GMCore=api;
 })(typeof window!=='undefined'?window:globalThis);
