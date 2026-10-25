@@ -137,6 +137,7 @@ button,a,input{touch-action:manipulation;-webkit-tap-highlight-color:transparent
 <footer>Overwatch RPG // Biblioteca de agentes • Adaptações independentes, não oficiais • Informações do jogo como referência</footer>
 <dialog id="details" aria-label="Detalhes do agente"><div class="detail-head"><div><small>Herói // Dados da ficha</small><h2 id="detailName"></h2></div><button class="close" id="closeDetails" aria-label="Fechar">✕</button></div><div id="detailBody" class="detail-body"></div><div class="detail-foot"><button id="openDetail" class="primary">Adicionar à ficha</button></div></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="storage.js?v=1"></script>
 <script>
 "use strict";
 const KEY="overwatch_rpg_sheet_v1";
@@ -176,13 +177,23 @@ function refreshStockPortraits(bank){
   }
   return changed;
 }
+let bankCache=null;
 function readBank(){
-  const saved=localStorage.getItem(KEY);
-  if(!saved)return {version:1,currentId:"",heroes:[],drawer:false,perkFilter:"Todos"};
-  const s=JSON.parse(saved);
-  if(!s||!Array.isArray(s.heroes))throw Error("O banco existente não tem o formato esperado.");
-  if(refreshStockPortraits(s))localStorage.setItem(KEY,JSON.stringify(s));
-  return s;
+  if(!bankCache)throw new Error("As fichas ainda estão sendo carregadas.");
+  return bankCache;
+}
+async function initializeCatalog(){
+  try{
+    const existing=await OWStorage.read();
+    if(existing&&!Array.isArray(existing.heroes))throw new Error("O banco salvo não contém uma lista de agentes.");
+    bankCache=existing||{version:1,currentId:"",heroes:[],drawer:false,perkFilter:"Todos"};
+    if(refreshStockPortraits(bankCache))await OWStorage.write(bankCache);
+    render();
+  }catch(error){
+    console.error("Erro ao carregar o compêndio:",error);
+    el("cards").innerHTML='<div class="empty">Não foi possível carregar suas fichas. Seus agentes foram preservados. Verifique o armazenamento do navegador e atualize a página.</div>';
+    notify("Falha ao acessar o armazenamento de fichas: "+(error.message||error));
+  }
 }
 function getStored(t){
   try{return readBank().heroes.find(h=>matches(h,t))||null}catch{return null}
@@ -281,10 +292,11 @@ function refreshCompendiumDescriptions(saved,t){
  return changed;
 }
 
-function addAgent(index,open){
+async function addAgent(index,open){
  const t=TEMPLATES[index];
  try{
-  const state=readBank();
+  // Trabalha com cópia: se houver falha ao salvar, o estado exibido não fica incorreto.
+  const state=JSON.parse(JSON.stringify(readBank()));
   let saved=state.heroes.find(h=>matches(h,t));
   let fresh=false;
   if(!saved){
@@ -295,14 +307,15 @@ function addAgent(index,open){
   refreshCompendiumDescriptions(saved,t);
   if(open)state.currentId=saved.id;
   state.drawer=false;
-  localStorage.setItem(KEY,JSON.stringify(state));
+  await OWStorage.write(state);
+  bankCache=state;
   if(open){window.location.href="./";return}
   render();notify(fresh?t.name+" adicionado à ficha.":t.name+" já estava salvo.");
- }catch(e){notify("Não foi possível salvar. "+String(e.message||e))}
+ }catch(e){console.error(e);notify("Não foi possível salvar: "+String(e.message||e))}
 }
-function addAll(){
+async function addAll(){
  try{
-  const state=readBank();
+  const state=JSON.parse(JSON.stringify(readBank()));
   let added=0;
   let upgraded=0;
   TEMPLATES.forEach(t=>{
@@ -312,9 +325,10 @@ function addAll(){
    saved.id="template-"+normalName(t.name)+"-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,9);
    state.heroes.push(saved);added++;
   });
-  localStorage.setItem(KEY,JSON.stringify(state));
-  render();notify(added||upgraded?added+" agente(s) adicionado(s); "+upgraded+" ficha(s) do Mizuki atualizada(s).":"Todos os agentes já estavam no seu banco.");
- }catch(e){notify("Não foi possível atualizar o banco: "+String(e.message||e))}
+  await OWStorage.write(state);
+  bankCache=state;
+  render();notify(added||upgraded?added+" agente(s) adicionado(s); "+upgraded+" campo(s) atualizado(s).":"Todos os agentes já estavam no seu banco.");
+ }catch(e){console.error(e);notify("Não foi possível atualizar o banco: "+String(e.message||e))}
 }
 function detailsGroup(title,list,transform){
  return '<section class="detail-section"><h3>'+title+'</h3>'+
@@ -346,7 +360,7 @@ document.querySelectorAll(".filter").forEach(b=>b.onclick=()=>{
  render();
 });
 el("addAll").onclick=addAll;
-render();
+initializeCatalog();
 </script>
 </body>
 </html>
