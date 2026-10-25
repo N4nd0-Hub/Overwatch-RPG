@@ -48,6 +48,23 @@
     });
   }
 
+  const OFFICIAL_PORTRAIT_REPLACEMENTS=[{"name":"WUYANG","old":"https://liquipedia.net/commons/images/0/04/Wuyang_full_portrait.png","image":"assets/wuyang_portrait.webp"},{"name":"BRIGITTE","old":"https://www.geekalerts.com/u/Overwatch-Brigitte.jpg","image":"assets/brigitte_portrait.webp"},{"name":"ANA","old":"https://vignette3.wikia.nocookie.net/characterprofile/images/2/23/Ana_Amari.png/revision/latest?cb=20160712180933","image":"assets/ana_portrait.webp"},{"name":"LÚCIO","old":"https://overwiki.ru/images/e/e5/%D0%9B%D1%83%D1%81%D0%B8%D0%BE.png","image":"assets/lucio_portrait.webp"},{"name":"BAPTISTE","old":"https://static.wikia.nocookie.net/overwatch_gamepedia/images/0/00/OW2_Baptiste.png/revision/latest?cb=20241108201237","image":"assets/baptiste_portrait.webp"}];
+  function upgradeStandardPortraits(snapshot) {
+    let changed = false;
+    for (const hero of snapshot.heroes) {
+      const name = String(hero.name || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+      for (const portrait of OFFICIAL_PORTRAIT_REPLACEMENTS) {
+        const expected = portrait.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        if (name === expected && hero.image === portrait.old) {
+          hero.image = portrait.image;
+          changed = true;
+          break;
+        }
+      }
+    }
+    return changed;
+  }
+
   function validate(snapshot) {
     if (!snapshot || !Array.isArray(snapshot.heroes)) throw new Error("O arquivo salvo tem formato incompatível.");
     return snapshot;
@@ -70,12 +87,17 @@
     await writeQueue.catch(() => {});
     const db = await openDb();
     const stored = await getRaw(db);
-    if (stored != null) return validate(JSON.parse(stored));
+    if (stored != null) {
+      const snapshot = validate(JSON.parse(stored));
+      if (upgradeStandardPortraits(snapshot)) await write(snapshot);
+      return snapshot;
+    }
 
     // Primeira visita após a atualização: importar as fichas antigas sem apagá-las.
     const oldData = localStorage.getItem(RECORD_KEY);
     if (oldData == null) return null;
     const snapshot = validate(JSON.parse(oldData));
+    upgradeStandardPortraits(snapshot);
     await write(snapshot);
     return snapshot;
   }
