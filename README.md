@@ -17,7 +17,7 @@ Ficha de agentes para o sistema próprio de Overwatch RPG.
 - **Hanzo** — DPS, arco e reconhecimento.
 - **Winston** — Tanque, Canhão de Tesla, Salto a Jato, Projetor de Barreira e Fúria Primata; escudo com integridade própria e vida temporária da Ultimate.
 - **D.Mon** — Tanque, Sabre de Plasma e Barreira de Poder; marcas de comando, troca para piloto e Quebra de Limites.
-- **D.Va** — Tanque, Matriz de Defesa, Micromísseis e Autodestruir; combo Jogada de Destaque e troca de mecha.
+- **D.Va (Tier II; 6 PO)** — Tanque, Quebra-Linha, ficha de NPC: MEKA de 550 HP (reconvocação com 400 HP), Piloto de 100 HP, Canhões de Fusão de 30/60, Boosters (1 Energia), Matriz de Defesa (2 Energia e amplificação), Micro-Mísseis (2 Energia), Chamar MEKA (6 Energia) e Self-Destruct (12 Energia; 40m, 1.000 dano, DT 40, incluindo aliados). Possui chamada gratuita condicionada à Ultimate, passiva especial Jogada de Destaque e reserva de 12 Energia. Atributos literais informados: 8/6/3/6/3 = 26 pontos; 8 PTec e 20 PH.
 - **Echo** — DPS, Tiro Triplo, Bombas Aderentes, Feixe Concentrado e Duplicar; Algoritmo Evolutivo.
 - **Tracer** — DPS, Teleportar, Recordação e Bomba Eletromagnética; Paradoxo Cronal.
 - **Mizuki** — Suporte, 25 pontos de atributos (20 + 5), 8 PTec e 15 PH disponíveis; retrato enviado pelo jogador. Kit preenchido a partir do site oficial e dos patches: Glaive Espiritual, Kasa Medicinal, Corrente Paralisante, Retorno ao Katashiro, Aura Medicinal e Santuário Kekkai. Duas barras especiais (Aura e Cargas de Kasa); valores de mesa adaptados. Ao abrir Mizuki pelo compêndio, os campos genéricos de fichas antigas são atualizados sem sobrescrever alterações manuais.
