@@ -8,6 +8,7 @@ Ficha de agentes para o sistema próprio de Overwatch RPG.
 |---|---|
 | `index.html` | Ficha principal: combate, proficiências, perks, inventário, passivas, habilidades e árvores de talentos. |
 | `agentes.html` | Biblioteca única de modelos de agentes prontos para adicionar à ficha. |
+| `storage.js` | Salvamento e migração automática de fichas para IndexedDB. |
 
 ### Agentes disponíveis
 
@@ -34,11 +35,11 @@ Os modelos estão **integrados no próprio `agentes.html`**, sem depender de uma
 
 ## Dados e progresso
 
-As fichas são armazenadas no **localStorage** do navegador (chave `overwatch_rpg_sheet_v1`). Os agentes importados da biblioteca passam a ser editáveis como os demais.
+As fichas são armazenadas no **IndexedDB** do navegador (banco `OverwatchRPGData`, registro `overwatch_rpg_sheet_v1`), que oferece mais espaço para personagens e retratos personalizados. O arquivo `storage.js` compartilha os dados entre a ficha principal e o compêndio. Na primeira abertura, fichas que estavam no `localStorage` são migradas automaticamente; a cópia antiga só é retirada após a gravação no IndexedDB ser confirmada. Os agentes importados da biblioteca passam a ser editáveis como os demais.
 
 - Os arquivos HTML do GitHub não contêm as alterações pessoais feitas pelo jogador.
 - Os dados não são sincronizados automaticamente entre dispositivos ou navegadores.
-- Use **Exportar** e **Importar** na ficha principal para fazer cópias de segurança.
+- Use **Exportar** e **Importar** na ficha principal para fazer cópias de segurança. Limpar os dados do site no navegador pode apagar fichas, inclusive as armazenadas no IndexedDB.
 - As estatísticas dos modelos são adaptações para este RPG, não valores oficiais do jogo.
 
 ## Uso no celular
