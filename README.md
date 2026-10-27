@@ -8,25 +8,12 @@ Ficha de agentes para o sistema próprio de Overwatch RPG.
 |---|---|
 | `index.html` | Ficha principal: combate, proficiências, perks, inventário, passivas, habilidades e árvores de talentos. |
 | `agentes.html` | Biblioteca única de modelos de agentes prontos para adicionar à ficha. |
-| `storage.js` | Salvamento e migração automática de fichas para IndexedDB. |
 
 ### Agentes disponíveis
 
 - **Emre** — DPS, assalto cibernético.
 - **Jetpack Cat (Fika)** — Suporte, voo e resgate.
 - **Hanzo** — DPS, arco e reconhecimento.
-- **Winston** — Tanque, Canhão de Tesla, Salto a Jato, Projetor de Barreira e Fúria Primata; escudo com integridade própria e vida temporária da Ultimate.
-- **D.Mon** — Tanque, Sabre de Plasma e Barreira de Poder; marcas de comando, troca para piloto e Quebra de Limites.
-- **D.Va (Tier II; 6 PO)** — Tanque, Quebra-Linha, ficha de NPC: MEKA de 550 HP (reconvocação com 400 HP), Piloto de 100 HP, Canhões de Fusão de 30/60, Boosters (1 Energia), Matriz de Defesa (2 Energia e amplificação), Micro-Mísseis (2 Energia), Chamar MEKA (6 Energia) e Self-Destruct (12 Energia; 40m, 1.000 dano, DT 40, incluindo aliados). Possui chamada gratuita condicionada à Ultimate, passiva especial Jogada de Destaque e reserva de 12 Energia. Atributos literais informados: 8/6/3/6/3 = 26 pontos; 8 PTec e 20 PH.
-- **Echo** — DPS, Tiro Triplo, Bombas Aderentes, Feixe Concentrado e Duplicar; Algoritmo Evolutivo.
-- **Tracer** — DPS, Teleportar, Recordação e Bomba Eletromagnética; Paradoxo Cronal.
-- **Brigitte (Tier II; 6 PO)** — Suporte, Guardião Protetor, Inspiração, Barreira de Escudo, Kits de Reparos e Marcas de Guarda; Reagrupar com vida extra.
-- **Ana (Tier II; 6 PO)** — Suporte, Inspirador Tático, Rifle Biótico, Dardo Sonífero, Granada Biótica e Estimulante; Triagem Implacável.
-- **Baptiste (Tier II; 6 PO)** — Suporte, Guardião Protetor, Pulso Regenerador, Campo de Imortalidade e Matriz Amplificadora; Última Chance.
-- **Wuyang (Tier II; 6 PO)** — Suporte, Curandeiro de Linha de Frente, Bastão Xuanwu, Correnteza Revigorante, Fluxo Torrencial, Maré Alta e Maré Explosiva; Equilíbrio das Marés.
-- **Lúcio (Tier II; 6 PO)** — Suporte, Inspirador Tático, Transição, Solta o Som, Onda Sonora e Barreira de Som; Sincronia Perfeita.
-- **Sojourn (Tier II; 6 PO)** — DPS, Atirador de Elite, Canhão Elétrico com Carga própria, Deslizada Enérgica, Disparo Disruptivo, Designação Tática e Sobrecarga. Passiva especial Execução Craniana: headshot triplica o Tiro Carregado (600 de dano com 100 Carga; 720 durante a Ultimate) e ignora metade da RD. Possui 25 atributos, 8 PTec, 20 PH e até 12 Energia; valores de combate de NPC.
-- **Mizuki** — Suporte, 25 pontos de atributos (20 + 5), 8 PTec e 15 PH disponíveis; retrato enviado pelo jogador. Kit preenchido a partir do site oficial e dos patches: Glaive Espiritual, Kasa Medicinal, Corrente Paralisante, Retorno ao Katashiro, Aura Medicinal e Santuário Kekkai. Duas barras especiais (Aura e Cargas de Kasa); valores de mesa adaptados. Ao abrir Mizuki pelo compêndio, os campos genéricos de fichas antigas são atualizados sem sobrescrever alterações manuais.
 
 Os modelos estão **integrados no próprio `agentes.html`**, sem depender de uma página HTML por personagem. Os antigos arquivos `emre.html`, `jetpack-cat.html` e `hanzo.html` foram consolidados e removidos.
 
@@ -41,11 +28,11 @@ Os modelos estão **integrados no próprio `agentes.html`**, sem depender de uma
 
 ## Dados e progresso
 
-As fichas são armazenadas no **IndexedDB** do navegador (banco `OverwatchRPGData`, registro `overwatch_rpg_sheet_v1`), que oferece mais espaço para personagens e retratos personalizados. O arquivo `storage.js` compartilha os dados entre a ficha principal e o compêndio. Na primeira abertura, fichas que estavam no `localStorage` são migradas automaticamente; a cópia antiga só é retirada após a gravação no IndexedDB ser confirmada. Os agentes importados da biblioteca passam a ser editáveis como os demais.
+As fichas são armazenadas no **IndexedDB** do navegador, com migração dos dados antigos da chave `overwatch_rpg_sheet_v1`. Os agentes importados da biblioteca passam a ser editáveis como os demais.
 
 - Os arquivos HTML do GitHub não contêm as alterações pessoais feitas pelo jogador.
 - Os dados não são sincronizados automaticamente entre dispositivos ou navegadores.
-- Use **Exportar** e **Importar** na ficha principal para fazer cópias de segurança. Limpar os dados do site no navegador pode apagar fichas, inclusive as armazenadas no IndexedDB.
+- Use **Exportar** e **Importar** na ficha principal para fazer cópias de segurança.
 - As estatísticas dos modelos são adaptações para este RPG, não valores oficiais do jogo.
 
 ## Uso no celular
@@ -55,7 +42,24 @@ As fichas são armazenadas no **IndexedDB** do navegador (banco `OverwatchRPGDat
 - Em Combate, vida, energia e movimento aparecem primeiro. Os atalhos levam diretamente aos recursos, atributos, habilidades e retrato.
 - O menu **☰** abre os agentes sobre a ficha. Toque fora dele, em **Fechar** ou em um agente para voltar.
 
-## Expansão
+## Modo GM e personagens
+
+Abra o **Modo GM** pela ficha principal. O bestiário e os encontros são salvos em um banco separado, criptografado com a senha do GM. Use **Exportar backup** para guardar e transferir esses dados.
+
+- **Bestiário:** tropas, elites e chefes, com pastas e modelos de Talon e Setor Nulo.
+- **Personagens:** NPCs com retrato, atributos, recursos, rolagens, ataques, passivas, Ultimate, história e notas. Use **Criar personagem**, mude o **Tipo de ficha** no editor ou importe um JSON de player.
+- **Ramattra:** ficha pronta em **Personagens → Personagens prontos → Usar modelo**. É uma adaptação para este RPG do [kit oficial](https://overwatch.blizzard.com/pt-br/heroes/ramattra/).
+- A escala do Ramattra aplica **2× a HP, dano, cura, escudos e redução de dano** uma única vez. Base: **1.200 HP, dano 80, redução 20, barreira 600 e armadura temporária 200**. Na Forma Nêmesis, a Agressão causa **120 de dano**.
+- Usar habilidades desconta Energia, aplica os efeitos vinculados e inicia recargas. **Próxima rodada** concede +2 Energia e avança as durações. Direção dos ataques, alvos, condições e aplicação do dano continuam sob controle do GM.
+- Cada cópia adicionada a um encontro começa com seus próprios recursos e efeitos. As alterações da cópia não afetam a ficha original.
+
+Os multiplicadores, as reservas e os bônus de formas podem ser editados na aba **Personagem** do editor. Nas habilidades, abra **Efeitos na ficha do personagem** para vincular uma forma ou reserva.
+
+Os retratos e ícones do Ramattra são assets da Blizzard usados neste projeto de fãs. O ícone de Overwatch substitui o símbolo anterior feito em CSS.
+
+Para verificar os cálculos e a compatibilidade dos modelos, execute `node --test tests/gm-characters.test.js`.
+
+## Expansão do catálogo de agentes
 
 Para adicionar novos agentes prontos, inclua seus objetos de ficha no catálogo `TEMPLATES` do arquivo `agentes.html`, com identificadores `_templateId` exclusivos, e apresente-os na coleção `INFO`. Evite criar um novo HTML para cada agente.
 

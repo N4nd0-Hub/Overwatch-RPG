@@ -5,6 +5,7 @@ const GRADES=['Lacaio','Soldado','Elite','Chefe'];
 const ROLES=['DPS','Suporte','Tanque'];
 const CONDITIONS=['Atordoado','Derrubado','Lento','Enraizado','Cego','Surdo','Desorientado','Sangrando','Envenenado','Queimando','Eletrificado','Congelante','Congelado','Silenciado'];
 const ATTRS=[['life','Vida'],['power','Poder'],['precision','Precisão'],['dexterity','Destreza'],['resistance','Resistência']];
+const MULTIPLIERS={hp:1,damage:1,healing:1,shield:1,reduction:1,movement:1};
 const uid=()=>typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36);
 const clone=x=>JSON.parse(JSON.stringify(x));
 const num=(x,f=0)=>Number.isFinite(Number(x))?Number(x):f;
@@ -17,23 +18,60 @@ function scale(grade='Soldado',tier=0){
 function ability(name,kind='skill',fields={}){return {id:uid(),kind,name,output:'Dano',action:kind==='passive'?'Passiva':'Ação Padrão',range:'Médio',target:'1 alvo',cost:kind==='ultimate'?10:kind==='skill'?2:0,mode:kind==='passive'?'none':'auto',amount:0,bonus:0,effect:'',attackBonus:0,rollMode:kind==='passive'?'description':fields.output==='Controle'?'save':'attack',attacksPerAction:1,saveType:'',saveDt:null,cooldownRounds:0,usage:'',...fields}}
 function makeEnemy(fields={}){
  const grade=GRADES.includes(fields.grade)?fields.grade:'Soldado';
- return {id:uid(),name:'Novo inimigo',faction:'Independente',grade,role:'DPS',tier:0,folderId:'',portrait:'',portraitFit:'cover',summary:'',notes:'',archived:false,overrides:{hp:null,movement:null},
+ return {id:uid(),name:'Novo inimigo',faction:'Independente',grade,role:'DPS',tier:0,folderId:'',portrait:'',portraitFit:'cover',summary:'',notes:'',archived:false,overrides:{hp:null,movement:null},sheetType:'enemy',profile:{alias:'',species:'',affiliation:'',biography:'',perks:'',proficiencies:'',branch:''},multipliers:{...MULTIPLIERS},resources:[],effects:[],sheetState:{hp:null,energy:0,resources:{},activeEffects:[],durations:{},cooldowns:{},round:1},
   stats:scale(grade,fields.tier||0),adjust:{hp:0,damage:0,reduction:0,movement:0,energy:0,attack:0,defense:0},
   abilities:[ability('Ataque Básico','basic')],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),...fields};
 }
-function stats(enemy){
+function baseStats(enemy){
  const a=enemy.stats,m=enemy.adjust||{},base=enemy.role==='Tanque'?150:enemy.role==='Suporte'?100:50;
  const result={hp:Math.max(1,Math.round(base+num(a.life)*50+num(m.hp))),damage:Math.max(0,round(num(a.power)*5+num(m.damage))),reduction:Math.max(0,round(num(a.resistance)*2+num(m.reduction))),movement:Math.max(0,round(10+num(a.dexterity)*2.5+num(m.movement))),energy:Math.max(0,round(10+num(m.energy))),attack:round(num(a.precision)+num(m.attack)),defense:round(num(a.dexterity)+num(m.defense)),dt:round(10+num(a.power))};
  for(const key of ['hp','movement']){const value=enemy.overrides?.[key];if(value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value)))result[key]=Math.max(key==='hp'?1:0,round(value))}
+ for(const effect of enemy.effects||[])if(enemy.sheetState?.activeEffects?.includes(effect.id))for(const [key,value] of Object.entries(effect.bonuses||{}))if(key in result)result[key]=Math.max(key==='hp'?1:0,round(result[key]+num(value)));
  return result;
 }
+function multiplier(enemy,key){return clamp(enemy.multipliers?.[key]??1,.1,20)}
+function stats(enemy){const result=baseStats(enemy);for(const key of ['hp','damage','reduction','movement'])result[key]=round(result[key]*multiplier(enemy,key));return result}
 function attackValue(enemy,a){return round(stats(enemy).attack+num(a.attackBonus))}
 function abilityValue(enemy,a){
  if(a.mode==='none'||a.kind==='passive')return null;
- if(a.mode==='fixed')return Math.max(0,round(a.amount));
+ const factor=multiplier(enemy,({Dano:'damage',Cura:'healing',Escudo:'shield'})[a.output]||'none');
+ if(a.valueResource)return resourceMax(enemy,a.valueResource);
+ if(a.mode==='fixed')return Math.max(0,round(num(a.amount)*factor));
  if(a.output==='Movimento'||a.output==='Utilidade')return null;
  if(a.output==='Controle')return round(stats(enemy).dt+num(a.cost));
- return Math.max(0,round(stats(enemy).damage+num(a.bonus)+(a.kind==='basic'?0:num(a.cost)*15)));
+ return Math.max(0,round((baseStats(enemy).damage+num(a.bonus)+(a.kind==='basic'?0:num(a.cost)*15))*factor));
+}
+function resourceMax(enemy,id){const r=(enemy.resources||[]).find(x=>x.id===id);return r?Math.max(0,round(num(r.max)*multiplier(enemy,r.type==='Cura'?'healing':r.type==='Vida'?'hp':'shield'))):0}
+function abilityText(enemy,a){return String(a.effect||'').replace(/\{\{(value|dt|resource:[a-z0-9_-]+)\}\}/gi,(_,token)=>token==='value'?abilityValue(enemy,a)??'—':token==='dt'?a.saveDt??stats(enemy).dt:resourceMax(enemy,token.slice(9)))}
+function runtime(enemy,combat=enemy.sheetState){const max=stats(enemy);if(combat.hp==null)combat.hp=max.hp;combat.hp=clamp(combat.hp,0,max.hp);combat.energy=clamp(combat.energy,0,max.energy);return combat}
+function abilityBlocked(enemy,a,combat=enemy.sheetState){
+ if(a.kind==='passive')return 'Efeito passivo';
+ if(a.requiresEffect&&!enemy.sheetState.activeEffects.includes(a.requiresEffect))return 'Requer '+((enemy.effects||[]).find(x=>x.id===a.requiresEffect)?.name||'efeito ativo');
+ if(a.forbidsEffect&&enemy.sheetState.activeEffects.includes(a.forbidsEffect))return 'Indisponível nesta forma';
+ if(num(enemy.sheetState.cooldowns[a.id])>0)return 'Recarga: '+enemy.sheetState.cooldowns[a.id]+' rodada(s)';
+ if(a.activateEffect&&enemy.sheetState.activeEffects.includes(a.activateEffect))return 'Efeito já ativo';
+ if(num(combat.energy)<num(a.cost))return 'Energia insuficiente';
+ return '';
+}
+function toggleEffect(enemy,id,enabled){
+ const effect=(enemy.effects||[]).find(x=>x.id===id);if(!effect)return;
+ const s=enemy.sheetState,active=s.activeEffects.includes(id),next=enabled??!active;
+ if(next&&!active){s.activeEffects.push(id);if(effect.duration)s.durations[id]=effect.duration;if(effect.grantResource)s.resources[effect.grantResource]=resourceMax(enemy,effect.grantResource)}
+ if(!next){s.activeEffects=s.activeEffects.filter(x=>x!==id);delete s.durations[id];if(effect.grantResource)s.resources[effect.grantResource]=0;for(const dependent of enemy.effects||[])if(dependent.requiresEffect===id&&s.activeEffects.includes(dependent.id))toggleEffect(enemy,dependent.id,false)}
+}
+function useAbility(enemy,a,combat=enemy.sheetState){
+ runtime(enemy,combat);const blocked=abilityBlocked(enemy,a,combat);if(blocked)throw Error(blocked);
+ combat.energy=clamp(combat.energy-num(a.cost)+num(a.generatesEnergy),0,stats(enemy).energy);
+ if(a.activateEffect){const effect=(enemy.effects||[]).find(x=>x.id===a.activateEffect);if(effect?.requiresEffect)toggleEffect(enemy,effect.requiresEffect,true);toggleEffect(enemy,a.activateEffect,true);if(effect?.requiresEffect){const parent=effect.requiresEffect;enemy.sheetState.durations[parent]=Math.max(num(enemy.sheetState.durations[parent]),num(enemy.sheetState.durations[a.activateEffect]))}}
+ if(a.restoreResource)enemy.sheetState.resources[a.restoreResource]=resourceMax(enemy,a.restoreResource);
+ if(a.cooldownRounds)enemy.sheetState.cooldowns[a.id]=a.cooldownRounds;
+ return abilityValue(enemy,a);
+}
+function nextCharacterRound(enemy,combat=enemy.sheetState){
+ const s=enemy.sheetState;s.round=Math.max(1,num(s.round,1))+1;
+ for(const [id,value] of Object.entries(s.cooldowns))if(value>1)s.cooldowns[id]=value-1;else delete s.cooldowns[id];
+ for(const [id,value] of Object.entries(s.durations))if(value>1)s.durations[id]=value-1;else toggleEffect(enemy,id,false);
+ runtime(enemy,combat);if(combat.hp>0)combat.energy=clamp(combat.energy+2,0,stats(enemy).energy);
 }
 function normalize(raw){
  if(!raw||typeof raw!=='object'||Array.isArray(raw))throw Error('Ficha de inimigo inválida.');
@@ -46,21 +84,30 @@ function normalize(raw){
  e.adjust=Object.fromEntries(Object.keys(e.adjust).map(k=>[k,clamp(raw.adjust?.[k]??0,-99999,99999)]));
  e.overrides=Object.fromEntries(['hp','movement'].map(k=>[k,raw.overrides?.[k]===null||raw.overrides?.[k]===undefined||raw.overrides?.[k]===''?null:clamp(raw.overrides[k],k==='hp'?1:0,999999)]));
  e.portraitFit=raw.portraitFit==='contain'?'contain':'cover';
+ e.sheetType=raw.sheetType==='character'?'character':'enemy';
+ e.profile=Object.fromEntries(Object.keys(e.profile).map(k=>[k,clean(raw.profile?.[k],['biography','perks','proficiencies'].includes(k)?30000:300)]));
+ e.multipliers=Object.fromEntries(Object.keys(MULTIPLIERS).map(k=>[k,clamp(raw.multipliers?.[k]??1,.1,20)]));
+ e.resources=(Array.isArray(raw.resources)?raw.resources:[]).slice(0,20).filter(r=>r&&typeof r==='object').map(r=>({id:clean(r.id||uid(),100),name:clean(r.name||'Recurso',160),max:clamp(r.max,0,999999),type:['Vida','Cura','Escudo'].includes(r.type)?r.type:'Escudo'}));
+ e.effects=(Array.isArray(raw.effects)?raw.effects:[]).slice(0,30).filter(f=>f&&typeof f==='object').map(f=>({id:clean(f.id||uid(),100),name:clean(f.name||'Efeito',160),description:clean(f.description,5000),duration:Math.round(clamp(f.duration??0,0,99)),grantResource:clean(f.grantResource,100),requiresEffect:clean(f.requiresEffect,100),bonuses:Object.fromEntries(['hp','damage','reduction','movement','energy','attack','defense'].map(k=>[k,clamp(f.bonuses?.[k]??0,-99999,99999)]))}));
+ const state=raw.sheetState||{},ids=new Set(e.effects.map(f=>f.id));
+ e.sheetState={hp:state.hp==null?null:clamp(state.hp,0,9999999),energy:clamp(state.energy??0,0,99999),round:Math.max(1,Math.round(clamp(state.round??1,1,99999))),resources:Object.fromEntries(e.resources.map(r=>[r.id,clamp(state.resources?.[r.id]??0,0,resourceMax(e,r.id))])),activeEffects:[...new Set(Array.isArray(state.activeEffects)?state.activeEffects:[])].filter(id=>ids.has(id)),durations:Object.fromEntries(Object.entries(state.durations||{}).filter(([id])=>ids.has(id)).map(([id,v])=>[id,Math.round(clamp(v,0,99))])),cooldowns:Object.fromEntries(Object.entries(state.cooldowns||{}).slice(0,80).map(([id,v])=>[clean(id,300),Math.round(clamp(v,0,100))]))};
  if(Array.isArray(raw.abilities))e.abilities=raw.abilities.slice(0,80).map(a=>{
   if(!a||typeof a!=='object')throw Error('Habilidade inválida.');
   const v=ability(clean(a.name,160),['basic','skill','passive','ultimate'].includes(a.kind)?a.kind:'skill');
-  for(const k of ['id','name','output','action','range','target','mode','effect','saveType','usage'])if(a[k]!==undefined)v[k]=clean(a[k],k==='effect'?30000:300);
+  for(const k of ['id','name','output','action','range','target','mode','effect','saveType','usage','icon','requiresEffect','forbidsEffect','activateEffect','restoreResource','valueResource'])if(a[k]!==undefined)v[k]=clean(a[k],k==='effect'?30000:300);
   if(!['auto','fixed','none'].includes(v.mode))v.mode='none';
   for(const k of ['amount','bonus','cost'])v[k]=clamp(a[k]??0,k==='bonus'?-99999:0,99999);
   v.attackBonus=clamp(a.attackBonus??0,-999,999);v.rollMode=['attack','save','automatic','description'].includes(a.rollMode)?a.rollMode:(v.kind==='passive'?'description':v.output==='Controle'?'save':'attack');
   const count=String(a.attacksPerAction??1).trim();v.attacksPerAction=/^(?:X|(?:[1-9]|10)d(?:[1-9]\d?|100))$/i.test(count)?(count.toUpperCase()==='X'?'X':count.toLowerCase()):Math.max(1,Math.round(clamp(count,1,99)));
   v.saveDt=a.saveDt===null||a.saveDt===undefined||a.saveDt===''?null:clamp(a.saveDt,0,9999);v.cooldownRounds=Math.round(clamp(a.cooldownRounds??0,0,100));
+  v.generatesEnergy=clamp(a.generatesEnergy??0,0,999);
   return v;
  });
  return e;
 }
 function fromHero(h){
- const e=makeEnemy({name:h.name||'NPC importado',role:h.role==='Tank'?'Tanque':h.role,stats:h.attrs,portrait:h.image||'',tier:h.tier||0,grade:'Elite'});
+ const listText=xs=>(Array.isArray(xs)?xs:[]).map(p=>typeof p==='string'?p:p.name||'').join('\n');
+ const e=makeEnemy({name:h.name||'NPC importado',role:h.role==='Tank'?'Tanque':h.role,stats:h.attrs,portrait:h.image||'',tier:h.tier||0,grade:'Elite',sheetType:'character',profile:{alias:h.codename||'',species:'',affiliation:'',biography:h.notes||'',perks:listText(h.perks),proficiencies:listText(h.proficiencies),branch:typeof h.skillTree?.branch==='string'?h.skillTree.branch:''}});
  e.abilities=[];
  const convert=(a,kind)=>ability(a.name,kind,{output:a.type||'Dano',action:a.action||'Ação Padrão',range:a.range||'',target:a.target||'',cost:a.minCost||0,mode:a.baseMode==='description'?'none':a.baseMode==='manual'?'fixed':'auto',amount:a.baseValue||0,bonus:a.bonusValue||0,effect:[a.description,a.amplification,a.notes].filter(Boolean).join('\n\n')});
  for(const a of h.basicAttacks||[])e.abilities.push(convert(a,'basic'));
@@ -76,7 +123,7 @@ function fromHero(h){
  if(f.energy)e.adjust.energy=num(f.energy.base,10)+num(f.energy.flat)-10;
  return normalize(e);
 }
-function spawn(enemy,number=1){return {id:uid(),enemyId:enemy.id,name:enemy.name+(number>1?' #'+number:''),snapshot:clone(enemy),hp:stats(enemy).hp,energy:0,initiative:0,conditions:[],note:''}}
+function spawn(enemy,number=1){const snapshot=clone(enemy);snapshot.sheetState={hp:null,energy:0,resources:{},activeEffects:[],durations:{},cooldowns:{},round:1};return {id:uid(),enemyId:enemy.id,name:enemy.name+(number>1?' #'+number:''),snapshot,hp:stats(snapshot).hp,energy:0,initiative:0,conditions:[],note:''}}
 function newState(){return {version:1,enemies:[],folders:[],encounter:{name:'Novo encontro',round:1,entries:[]}}}
 function normalizeState(raw){
  if(!raw||!Array.isArray(raw.enemies))throw Error('Bestiário inválido.');
@@ -84,7 +131,7 @@ function normalizeState(raw){
  s.folders=(raw.folders||[]).slice(0,300).filter(f=>f&&typeof f.id==='string').map(f=>({id:String(f.id).slice(0,100),name:String(f.name||'Pasta').slice(0,100)}));
  if(raw.encounter&&Array.isArray(raw.encounter.entries)){
   s.encounter.name=String(raw.encounter.name||'Encontro').slice(0,200);s.encounter.round=Math.max(1,Math.round(num(raw.encounter.round,1)));
-  s.encounter.entries=raw.encounter.entries.slice(0,300).map(row=>{const enemy=normalize(row.snapshot),entry=spawn(enemy);return {...entry,id:String(row.id||uid()).slice(0,100),enemyId:String(row.enemyId||enemy.id),name:String(row.name||enemy.name).slice(0,300),hp:clamp(row.hp,0,stats(enemy).hp),energy:clamp(row.energy,0,stats(enemy).energy),initiative:clamp(row.initiative,-999,999),conditions:(row.conditions||[]).filter(x=>CONDITIONS.includes(x)),note:String(row.note||'').slice(0,5000)}});
+  s.encounter.entries=raw.encounter.entries.slice(0,300).map(row=>{const enemy=normalize(row.snapshot),entry=spawn(enemy);return {...entry,snapshot:enemy,id:String(row.id||uid()).slice(0,100),enemyId:String(row.enemyId||enemy.id),name:String(row.name||enemy.name).slice(0,300),hp:clamp(row.hp,0,stats(enemy).hp),energy:clamp(row.energy,0,stats(enemy).energy),initiative:clamp(row.initiative,-999,999),conditions:(row.conditions||[]).filter(x=>CONDITIONS.includes(x)),note:String(row.note||'').slice(0,5000)}});
  }
  return s;
 }
@@ -142,7 +189,7 @@ const TEMPLATES=[
   ability('Aniquilação de área','ultimate',{cost:10,range:'Raio de 12m',target:'Todos na área',bonus:30,effect:'A área é anunciada uma rodada antes. Destreza contra DT 10 + Poder + 10 reduz o dano à metade.'}),
   ability('Fase II — Núcleo exposto','passive',{effect:'Ao chegar a 50% do HP Máximo, remove seu próprio escudo e recebe +3 Energia. Sua Redução de Dano diminui em 4; os ataques recebem +20 de dano até o fim do combate.'})]}
 ];
-function fromTemplate(key,tier=0){const t=TEMPLATES.find(x=>x.key===key);if(!t)throw Error('Modelo não encontrado.');return makeEnemy({...clone(t),id:uid(),templateKey:key,tier,stats:t.stats?clone(t.stats):scale(t.grade,tier),abilities:t.abilities.map(a=>({...clone(a),id:uid()}))})}
-const api={FACTIONS,GRADES,ROLES,CONDITIONS,ATTRS,TEMPLATES,uid,clone,num,clamp,round,scale,ability,makeEnemy,stats,attackValue,abilityValue,normalize,fromHero,spawn,newState,normalizeState,fromTemplate};
+function fromTemplate(key,tier=null){const t=TEMPLATES.find(x=>x.key===key);if(!t)throw Error('Modelo não encontrado.');tier=tier??t.tier??0;return makeEnemy({...clone(t),id:uid(),templateKey:key,tier,stats:t.stats?clone(t.stats):scale(t.grade,tier),abilities:t.abilities.map(a=>({...clone(a),id:uid()}))})}
+const api={FACTIONS,GRADES,ROLES,CONDITIONS,ATTRS,TEMPLATES,MULTIPLIERS,uid,clone,num,clamp,round,scale,ability,makeEnemy,baseStats,multiplier,stats,attackValue,abilityValue,resourceMax,abilityText,runtime,abilityBlocked,toggleEffect,useAbility,nextCharacterRound,normalize,fromHero,spawn,newState,normalizeState,fromTemplate};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.GMCore=api;
 })(typeof window!=='undefined'?window:globalThis);
